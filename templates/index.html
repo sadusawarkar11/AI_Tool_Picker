@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToolMatcher AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #fafafa;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1.25rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .logo span {
+            color: #3b82f6;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-menu a {
+            color: #6b7280;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+            transition: color 0.2s;
+        }
+
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            color: #3b82f6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem 4rem;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 3.5rem;
+        }
+
+        .hero h1 {
+            font-size: 2.75rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 1rem;
+            letter-spacing: -0.025em;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: #6b7280;
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        .search-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .results-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        .results-header p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .category-section {
+            margin-bottom: 3rem;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .category-icon {
+            font-size: 1.75rem;
+        }
+
+        .category-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .tool-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+
+        .tool-header {
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .tool-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+
+        .tool-model {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .tool-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .metric {
+            background: #f9fafb;
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .tool-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-size: 0.875rem;
+        }
+
+        .detail-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .badge-free {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-paid {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-menu {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">Tool<span>Matcher</span></div>
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="/analytics">Analytics</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Find Your Perfect AI Tool</h1>
+            <p>Get personalized recommendations based on your needs, expertise level, and budget</p>
+        </div>
+
+        <div class="search-card">
+            <form id="searchForm">
+                <div class="form-group">
+                    <label for="requirement">What do you need help with?</label>
+                    <input type="text" id="requirement" name="requirement" 
+                           placeholder="e.g., I need help writing code or creating images" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Task Category</label>
+                    <select id="category" name="category" required>
+                        <option value="">Select a category</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="expertise">Expertise Level</label>
+                    <select id="expertise" name="expertise" required>
+                        <option value="">Select your level</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">Get Recommendations</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Finding the best tools for you...</p>
+            </div>
+        </div>
+
+        <div class="results-section" id="results">
+            <div class="results-header">
+                <h2>Recommended Tools</h2>
+                <p>Based on your requirements and expertise</p>
+            </div>
+
+            <div class="category-section">
+                <div class="category-header">
+                    <span class="category-icon">🆓</span>
+                    <h3>Free Tools</h3>
+                </div>
+                <div class="tools-grid" id="freeTools"></div>
+            </div>
+
+            <div class="category-section">
+                <div class="category-header">
+                    <span class="category-icon">💼</span>
+                    <h3>Paid Tools</h3>
+                </div>
+                <div class="tools-grid" id="paidTools"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let categories = [];
+        let expertiseLevels = [];
+
+        async function loadDropdowns() {
+            try {
+                const response = await fetch('/get_categories');
+                const data = await response.json();
+                
+                categories = data.categories;
+                expertiseLevels = data.expertise_levels;
+                
+                const categorySelect = document.getElementById('category');
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    categorySelect.appendChild(option);
+                });
+                
+                const expertiseSelect = document.getElementById('expertise');
+                expertiseLevels.forEach(exp => {
+                    const option = document.createElement('option');
+                    option.value = exp;
+                    option.textContent = exp;
+                    expertiseSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading dropdowns:', error);
+            }
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            
+            const formData = {
+                user_requirement: document.getElementById('requirement').value,
+                task_category: document.getElementById('category').value,
+                expertise_level: document.getElementById('expertise').value
+            };
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                    results.style.display = 'block';
+                    setTimeout(() => {
+                        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            const freeToolsDiv = document.getElementById('freeTools');
+            const paidToolsDiv = document.getElementById('paidTools');
+            
+            freeToolsDiv.innerHTML = '';
+            paidToolsDiv.innerHTML = '';
+            
+            if (data.free_tools.length === 0) {
+                freeToolsDiv.innerHTML = '<div class="no-results">No free tools found for this category</div>';
+            } else {
+                data.free_tools.forEach(tool => {
+                    freeToolsDiv.innerHTML += createToolCard(tool, true);
+                });
+            }
+            
+            if (data.paid_tools.length === 0) {
+                paidToolsDiv.innerHTML = '<div class="no-results">No paid tools found for this category</div>';
+            } else {
+                data.paid_tools.forEach(tool => {
+                    paidToolsDiv.innerHTML += createToolCard(tool, false);
+                });
+            }
+        }
+
+        function createToolCard(tool, isFree) {
+            if (isFree) {
+                return `
+                    <div class="tool-card">
+                        <div class="tool-header">
+                            <div class="tool-name">${tool.tool_name}</div>
+                            <div class="tool-model">${tool.best_model}</div>
+                        </div>
+                        
+                        <div class="tool-metrics">
+                            <div class="metric">
+                                <div class="metric-label">Efficiency</div>
+                                <div class="metric-value">${tool.efficiency_rate.toFixed(1)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Quality</div>
+                                <div class="metric-value">${tool.output_quality.toFixed(1)}/10</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Ease</div>
+                                <div class="metric-value">${tool.ease_of_use.toFixed(1)}/5</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Trial</div>
+                                <div class="metric-value">${tool.free_trial_days}d</div>
+                            </div>
+                        </div>
+                        
+                        <div class="tool-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Plan</span>
+                                <span class="badge badge-free">FREE</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Quota</span>
+                                <span class="detail-value">${tool.free_quota}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Platform</span>
+                                <span class="detail-value">${tool.platform}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="tool-card">
+                        <div class="tool-header">
+                            <div class="tool-name">${tool.tool_name}</div>
+                            <div class="tool-model">${tool.best_model}</div>
+                        </div>
+                        
+                        <div class="tool-metrics">
+                            <div class="metric">
+                                <div class="metric-label">Efficiency</div>
+                                <div class="metric-value">${tool.efficiency_rate.toFixed(1)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Quality</div>
+                                <div class="metric-value">${tool.output_quality.toFixed(1)}/10</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Ease</div>
+                                <div class="metric-value">${tool.ease_of_use.toFixed(1)}/5</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Price</div>
+                                <div class="metric-value">$${tool.monthly_price.toFixed(0)}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="tool-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Plan</span>
+                                <span class="badge badge-paid">${tool.plan_name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Monthly</span>
+                                <span class="detail-value">$${tool.monthly_price.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Yearly</span>
+                                <span class="detail-value">$${tool.yearly_price.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Platform</span>
+                                <span class="detail-value">${tool.platform}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        loadDropdowns();
+    </script>
+</body>
+</html>

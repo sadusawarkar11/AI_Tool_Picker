@@ -1,0 +1,48 @@
+======================================================================
+DATA CLEANING REPORT — INCLUDED DATA SNAPSHOT
+Reviewed: 2026-10-31
+======================================================================
+
+RAW DATA
+  File: toolmatcher_ai_raw_dataset_v2.csv
+  Records: 3425
+  Columns: 24
+  Tool labels: 95
+  Task category spellings: 34
+  Expertise-level spellings: 12
+  Missing cells: 3473
+
+CLEANED DATA
+  File: cleaned_toolmatcher_dataset.csv
+  Records: 339
+  Columns: 24
+  Tool labels: 65
+  Task categories: 26
+  Expertise levels: Advanced, Beginner, Intermediate
+  Exact duplicate rows: 0
+  Duplicate tool/category/expertise combinations: 0
+  Missing cells retained: 310
+    context_window_tokens: 231
+    free_trial_days: 26
+    yearly_price_usd: 21
+    monthly_budget_usd: 12
+    standard_plan_monthly_usd: 12
+    rank_within_requirement: 8
+
+RECORDED CLEANING OPERATIONS
+  Expertise levels standardized to three values.
+  Category variants standardized to 26 values.
+  Tool names standardized from 95 to 65 labels.
+  Duplicate or repeated combinations removed: 3081.
+  Out-of-range records removed: 5.
+  Values filled according to the pipeline report: 68.
+  Final records: 3425 - 3081 - 5 = 339.
+
+INTERPRETATION
+  The included cleaned dataset is normalized and deduplicated for the app.
+  It is not fully imputed: 310 missing cells remain, mostly context-window data.
+  The application uses defaults for some missing numeric values.
+  Price and product facts may need refreshing; the source file includes
+  price_source_status and last_verified fields.
+
+======================================================================
