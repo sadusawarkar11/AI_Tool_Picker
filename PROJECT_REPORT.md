@@ -2,7 +2,6 @@
 
 **Report date:** 31 October 2026  
 **Project type:** Educational machine-learning recommendation web application  
-**Author:** Sayli  
 **Technology:** Python, scikit-learn, Flask, pandas, NumPy, HTML, CSS, JavaScript, Chart.js
 
 ## Executive summary
