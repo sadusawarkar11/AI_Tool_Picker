@@ -2,114 +2,280 @@
 
 **Report date:** 31 October 2026  
 **Project type:** Educational machine-learning recommendation web application  
-**Implementation:** Python, scikit-learn, Flask, pandas, NumPy, HTML/CSS/JavaScript
+**Author:** Sayli  
+**Technology:** Python, scikit-learn, Flask, pandas, NumPy, HTML, CSS, JavaScript, Chart.js
 
-## 1. Executive summary
+## Executive summary
 
-ToolMatcher AI is a web application for narrowing down a collection of AI tools using a selected task category, expertise level, and monthly budget. It combines a trained multi-class classifier with a hand-written ranking score, returns separate lists for tools with free plans and paid tools within budget, and provides a dashboard of dataset summaries.
+ToolMatcher AI is a decision-support web application that helps users compare AI tools for a task, experience level, and budget. It combines a multi-class machine-learning model with a rule-based ranking score, then returns two shortlists: tools that offer a free plan and paid tools whose listed monthly price is within the entered budget. An analytics page summarizes the dataset and the model result.
 
-The repository includes the source datasets, a cleaned dataset, training scripts, model and preprocessing artifacts, a Flask application, presentation materials, and a saved notebook. The current cleaned dataset contains 339 records representing 65 standardized tool labels. The committed classifier is a Random Forest fitted on 11 features. The current result file records 76.47% accuracy on a 68-row held-out split.
+The project demonstrates an end-to-end machine-learning workflow: clean a raw dataset, encode its categorical values, train and save a classifier, load the model in a Flask service, and present recommendations in a browser. The repository includes the code, raw and cleaned data, model artifacts, notebook, launch scripts, and supporting documentation.
 
-Some older documents and notebook outputs describe earlier experiments and quote a 97.02% result. That figure does not match the committed model, which is a Random Forest, nor the current results CSV. This report treats the checked-in model and current CSV as the current snapshot.
+This report describes the current files in the repository. The cleaned data contains 339 records and 65 standardized tool labels. The included classifier is a Random Forest trained with 11 input features. The saved result file records 76.47% accuracy on a 68-record holdout. Older notebook outputs and earlier documents describe a separate experiment and include a 97.02% result; that result is not representative of the model currently included with the web application.
 
-## 2. Problem and intended users
+## 1. Project description
 
-The project addresses the difficulty of comparing many AI products when a user has a particular task, experience level, and spending limit. It is designed as a demonstration and learning project for users who want an initial shortlist rather than a definitive purchasing decision.
+### 1.1 The problem
 
-The interface presents tool details such as monthly price, available free plan, free quota, trial length, quality, efficiency, ease of use, underlying model, and platform where the dataset supplies those values.
+AI products cover many overlapping categories, including writing, coding, research, image creation, transcription, productivity, and data analysis. A user who needs a tool must often compare products across different pricing structures and feature descriptions. The best choice also depends on personal context: a beginner may value ease of use, while an advanced user may value quality or control; a strict budget may rule out tools with strong paid features.
 
-## 3. User experience and recommendation flow
+Manual comparison takes time and can produce a poor match when a product is too expensive, too complex, or not suited to the task. ToolMatcher AI organizes a supplied dataset of tools and turns selected user criteria into a ranked starting list.
 
-The home page collects five fields: free-text requirement, task category, expertise level, monthly budget, and platform.
+### 1.2 Why a solution is needed
 
-The server filters dataset records by the selected task category and expertise level. If there are no exact matches, it broadens the candidate set to the category and then to all cleaned records. For each candidate it prepares the model features, obtains a probability for that candidate tool when that class exists in the fitted model, and calculates a combined ranking score.
+The need for the project comes from four practical issues:
 
-The score currently used in app.py is:
+1. **Choice overload:** A large and changing tool market makes it difficult to know which products are relevant.
+2. **Different user needs:** A recommendation should consider both the task and the user's level of experience.
+3. **Pricing complexity:** Free plans, trials, and paid tiers make a simple “best tool” list inadequate.
+4. **Scattered comparison data:** Important attributes such as price, quality, platform, and free quotas are not always presented in a consistent format.
 
-    (confidence × 40
-     + efficiency_rate_pct × 0.3
-     + output_quality_1_10 × 2
-     + ease_of_use_1_5 × 2)
-    × budget_match
+A structured recommendation system can reduce the first round of search by filtering and ranking options against these criteria. The aim is to help users form a shortlist more quickly, not to replace a product trial or independent price check.
 
-Budget match is 1.0 when the listed monthly price is within the entered budget and 0.5 otherwise. The free list includes candidates with a free plan; the paid list includes candidates with a positive monthly price no greater than the budget. Each list is capped at ten results and ordered by the combined score.
+### 1.3 Project objectives
 
-The analytics page summarizes the cleaned dataset: leading categories and tools, free-plan availability, average quality/efficiency/ease/price values, platform distribution, and model accuracy results.
+- Standardize inconsistent tool names, task categories, and expertise labels.
+- Prepare a reusable dataset for model training and application use.
+- Train a classifier to estimate which tool label is associated with a candidate feature profile.
+- Combine the model's score with practical quality, efficiency, ease-of-use, and budget factors.
+- Present free-plan and eligible paid choices in a simple web interface.
+- Provide a small analytics dashboard to inspect the included data and recorded model accuracy.
 
-## 4. System architecture
+### 1.4 Intended users and use cases
 
-### Data preparation
+The application is intended as an educational demonstration and a first-pass discovery aid for people choosing AI software. Example use cases include:
 
-- data_cleaning_pipeline.py loads the raw CSV, standardizes expertise and category labels, normalizes tool names, removes repeated tool/category/expertise combinations, converts numeric and boolean fields, handles selected missing values, removes out-of-range records, and writes the cleaned CSV and a text report.
-- quick_model_training.py encodes categorical columns, selects 11 features, splits the cleaned records into train and test sets, scales the features, compares a Random Forest with a small stacking classifier, and saves the stronger model and preprocessing objects.
-- advanced_model_training.py provides a separate, slower comparison and tuning route.
-- toolmatcher_ai_advanced.ipynb records an earlier exploratory training run. Its embedded outputs should be read as historical experiment results, not as results for the current model artifact.
+- A beginner looking for a coding assistant with a free plan.
+- A user comparing image-generation tools under a monthly budget.
+- A user looking for research or transcription software for a particular task.
+- A presenter demonstrating data cleaning, model training, and Flask integration.
 
-### Application
+The dataset is a snapshot, so users should verify current prices, limits, and product details with the vendors before making a purchase decision.
 
-- app.py loads the cleaned dataset, serialized classifier, scaler, label encoders, and recorded performance file. It serves the API and recommendation pages.
-- start_app.py loads the same resources and starts Flask without debug mode.
-- templates/index.html contains the recommendation interface.
-- templates/analytics.html renders the analytics dashboard and model accuracy comparison.
+## 2. What the system does
 
-The application is a single-process Flask demonstration. The main launcher binds to all network interfaces on port 5000; it is suitable for a controlled demo and needs an appropriate deployment setup before public hosting.
+### 2.1 User inputs
 
-## 5. Data inventory and cleaning
+The recommendation page collects:
 
-The raw file toolmatcher_ai_raw_dataset_v2.csv has 3,425 rows and 24 columns. It contains 95 distinct tool names, 34 category spellings, and 12 expertise spellings. It also has 3,473 missing cells, with context_window_tokens accounting for most of them.
+- A free-text requirement.
+- Task category.
+- Expertise level: Beginner, Intermediate, or Advanced.
+- Monthly budget.
+- Platform preference.
 
-The checked-in cleaned file cleaned_toolmatcher_dataset.csv has 339 rows and 24 columns, with 65 standardized tool names, 26 task categories, and the three expertise levels Beginner, Intermediate, and Advanced. There are no exact duplicate rows or repeated tool/category/expertise combinations in that file.
+The page displays tool information available in the dataset, such as monthly price, yearly price, free-plan availability, free quota, trial length, quality rating, efficiency rating, ease-of-use rating, platform, and underlying model.
 
-The recorded cleaning process removed 3,081 duplicate or repeated combinations and five out-of-range records. It standardized variants of expertise levels, task categories, and tool names. It reports 68 filled values, but the final cleaned CSV still contains 310 missing cells: 231 in context_window_tokens, with the remainder in monthly budget, free trial, yearly price, standard-plan price, and rank fields. Therefore “cleaned” means normalized and deduplicated for this workflow; it does not mean every cell is complete.
+### 2.2 Recommendation flow
 
-The dataset includes price_source_status and last_verified fields, so price freshness can vary. The app uses the supplied snapshot and has no live data refresh.
+1. The Flask server loads the cleaned CSV, classifier, scaler, and label encoders.
+2. The app filters records by the selected task category and expertise level.
+3. If no exact rows exist, it broadens the candidates to the chosen category, then to the full cleaned dataset.
+4. For each candidate row, the app builds the 11-feature vector using the user's budget and the candidate's recorded attributes.
+5. It scales that vector, obtains the classifier's class probabilities, and looks up the probability associated with the candidate tool's encoded label.
+6. It combines this probability with non-ML ratings and a budget-fit multiplier.
+7. It retains the highest-scoring row for each tool name to avoid duplicate tool entries.
+8. It returns up to ten free-plan recommendations and up to ten paid tools whose listed monthly price is positive and within the budget.
 
-## 6. Machine-learning method and current evaluation
+The free-text requirement currently does not affect filtering, features, or scoring. The selected platform also does not filter the candidates; the platform recorded on each candidate row is used in its feature vector. These are current implementation limits.
 
-### Feature set
+### 2.3 Ranking formula
 
-The current training workflow uses these 11 features, in order:
+The app currently calculates a combined score as follows:
 
-1. Encoded expertise level
-2. Encoded task category
-3. Encoded platform
-4. Encoded underlying model
-5. Monthly user budget
-6. Monthly tool price
-7. Ease-of-use rating
-8. Output-quality rating
-9. Efficiency percentage
-10. Free-plan flag
-11. Annual-billing flag
+    score =
+        (tool_probability × 40
+         + efficiency_rate_pct × 0.3
+         + output_quality_1_10 × 2
+         + ease_of_use_1_5 × 2)
+        × budget_match
 
-The target is the encoded tool name. A StandardScaler is fit on the training portion and saved for inference. Label encoders for input categories and tool names are also saved.
+where budget_match is 1.0 when the candidate's monthly price is no greater than the user's budget, and 0.5 otherwise.
 
-### Current committed artifact
+The free-plan list is sorted by this score and then limited to ten results. The paid list is restricted to positive monthly prices within budget and sorted by the same score. This is a hand-written ranking heuristic layered on top of the classifier; its weights have not been tuned from user feedback.
 
-The included best_model.pkl loads as a scikit-learn RandomForestClassifier. The quick-training script uses 100 trees, maximum depth 20, square-root feature selection, minimum split size 5, and random seed 42. It creates an 80/20 random split of 339 records: 271 training rows and 68 test rows. The recorded held-out accuracy is 0.7647058824, or 76.47%.
+## 3. System architecture
 
-The label encoder contains 65 tool labels, while the fitted model exposes 63 classes. This follows from the unstratified random split and sparse classes. Probability lookup now uses the model's actual class IDs; a label absent from model.classes_ receives zero confidence instead of an invented fallback value.
+### 3.1 Data and training components
 
-Only accuracy is available in the committed model_performance_results.csv. Precision, recall, per-class metrics, confidence intervals, and an independent validation result are not included, so this report does not claim them.
+- **toolmatcher_ai_raw_dataset_v2.csv:** Original 3,425-row, 24-column dataset.
+- **data_cleaning_pipeline.py:** Standardizes labels, removes repeated rows/combinations, converts numeric and boolean columns, fills selected missing values, checks ranges, and writes the cleaned data and report.
+- **cleaned_toolmatcher_dataset.csv:** The 339-row data file used by the application and quick-training script.
+- **quick_model_training.py:** Trains a Random Forest and a small stacking alternative, evaluates both on a holdout, saves the stronger candidate and writes model accuracy results.
+- **advanced_model_training.py:** A separate, slower workflow that compares and tunes additional algorithms.
+- **toolmatcher_ai_advanced.ipynb:** A saved exploratory notebook from an earlier experiment; its embedded outputs do not describe the current model artifact.
 
-### Historical results
+### 3.2 Web application components
 
-ML_TRAINING_REPORT.md and the notebook contain earlier metrics, including 97.02%. They describe a different training run and data split. They are not supported by the current serialized model or result CSV and should not be used as the headline performance claim for this snapshot.
+- **app.py:** Flask routes, model loading, recommendation processing, and analytics data.
+- **start_app.py:** Loads the runtime artifacts and starts the application without Flask debug mode.
+- **templates/index.html:** Recommendation form and results interface.
+- **templates/analytics.html:** Charts and model-accuracy display.
+- **best_model.pkl:** Serialized current classifier.
+- **scaler.pkl:** Feature scaler fitted during training.
+- **label_encoders.pkl:** Encoders used to transform categories and tool names.
+- **model_performance_results.csv:** Current saved accuracy record.
 
-## 7. Software stack and repository artifacts
+The app is a single-process Flask demonstration. The main launcher binds to all network interfaces on port 5000. Use an appropriate WSGI server and configure network exposure before deploying beyond a controlled local demonstration.
 
-- Backend: Python and Flask
-- Data work: pandas and NumPy
-- Modeling and preprocessing: scikit-learn
-- Serialization: joblib/pickle
-- UI: HTML, CSS, JavaScript, Chart.js
-- Experimentation: Jupyter Notebook
+## 4. Dataset and data preparation
 
-The runtime artifacts are included intentionally: best_model.pkl, scaler.pkl, label_encoders.pkl, and cleaned_toolmatcher_dataset.csv are required by the application. They are small enough for ordinary GitHub storage. The raw dataset, notebook, source scripts, templates, reports, and Windows launchers are also included. Python caches and Jupyter checkpoint folders are excluded.
+### 4.1 Raw data
+
+The raw file has 3,425 rows and 24 columns. It includes 95 distinct tool names, 34 task-category spellings, and 12 expertise-level spellings. It also contains 3,473 missing cells, with context-window values accounting for most of the missing data.
+
+Each row represents a candidate tool record associated with a requirement and includes fields such as task category, expertise level, budget, tool name, price, free-plan availability, ratings, platform, and source-verification metadata.
+
+### 4.2 Cleaning steps
+
+The cleaning script carries out these operations:
+
+1. Loads the raw CSV.
+2. Standardizes expertise variations to Beginner, Intermediate, and Advanced.
+3. Normalizes tool-name spelling and known aliases.
+4. Standardizes task-category variants.
+5. Removes exact duplicates.
+6. Removes repeated tool/category/expertise combinations, keeping the row with the strongest efficiency value.
+7. Converts price and rating fields into numeric types and normalizes boolean flags.
+8. Fills selected missing fields. For example, missing monthly price is set to zero by the current script.
+9. Removes records outside expected ranges for efficiency, quality, and ease-of-use scores.
+10. Saves the cleaned CSV and a cleaning summary.
+
+### 4.3 Cleaned data snapshot
+
+The included cleaned dataset has:
+
+- 339 rows and 24 columns.
+- 65 distinct standardized tool labels.
+- 26 task categories.
+- 3 expertise levels.
+- No exact duplicate rows or repeated tool/category/expertise combinations.
+- 310 remaining missing cells, of which 231 are context-window values.
+
+The cleaning pipeline reports 3,081 duplicate or repeated combinations removed, five out-of-range records removed, and 68 values filled. It is important to distinguish normalization and deduplication from complete imputation: the final CSV still has missing values. Treating an unknown monthly price as zero can also make “unknown” look like “free,” so that cleaning rule deserves review.
+
+The dataset includes price_source_status and last_verified fields, but the app does not refresh its data automatically. Product details and prices can become stale.
+
+## 5. Detailed machine-learning methodology
+
+### 5.1 Learning task
+
+This is a **multi-class classification** task. The model receives a numeric feature vector describing a user budget and a candidate AI tool record. It is trained to predict the encoded tool-name class associated with that row.
+
+The classifier is not a natural-language model. It does not interpret the free-text requirement. It learns associations in the structured training rows between their encoded category/experience/platform/model fields, prices, and ratings and the tool-name label.
+
+### 5.2 Input features
+
+The training script uses the following 11 features in this exact order:
+
+| # | Feature | Type | Meaning |
+| ---: | --- | --- | --- |
+| 1 | expertise_level_Encoded | Encoded category | User expertise level |
+| 2 | task_category_Encoded | Encoded category | Task the tool is listed for |
+| 3 | platform_Encoded | Encoded category | Candidate's recorded platform |
+| 4 | best_model_Encoded | Encoded category | Underlying model listed for the tool |
+| 5 | monthly_budget_usd | Numeric | User's monthly budget |
+| 6 | monthly_price_usd | Numeric | Candidate tool's listed monthly price |
+| 7 | ease_of_use_1_5 | Numeric | Ease-of-use rating |
+| 8 | output_quality_1_10 | Numeric | Output-quality rating |
+| 9 | efficiency_rate_pct | Numeric | Efficiency rating |
+| 10 | free_plan_available | Binary | Whether a free plan is recorded |
+| 11 | annual_billing_available | Binary | Whether annual billing is recorded |
+
+The target is tool_name_Encoded, a numeric label representing the tool name. The quick-training script encodes expertise, category, platform, underlying model, and tool name with scikit-learn LabelEncoder objects, which are saved for application use.
+
+### 5.3 Preprocessing and data split
+
+The quick-training workflow performs these steps:
+
+1. Reads the cleaned dataset.
+2. Encodes the categorical input columns and target labels.
+3. Normalizes yes/no and numeric/string representations of the two billing flags.
+4. Selects the 11 features and encoded tool-name target.
+5. Creates an 80/20 random train/test split with random_state=42.
+6. Fits StandardScaler on the training features only and transforms both splits.
+7. Trains model candidates on the training split.
+8. Calculates accuracy on the held-out test split.
+9. Saves the selected classifier, scaler, label encoders, and accuracy results.
+
+For 339 rows, the split contains 271 training records and 68 test records. The split is not stratified. Because the data has many tool labels and some labels occur rarely, not every tool is guaranteed to appear in the training portion.
+
+Label encoding assigns integer IDs to category values. This is convenient for the current scripts, but those integers can imply an ordering that the categories do not truly have. One-hot encoding or a model pipeline that handles categorical variables directly would be a useful future comparison.
+
+StandardScaler transforms each feature using the training mean and standard deviation:
+
+    scaled_value = (value - training_mean) / training_standard_deviation
+
+Scaling makes numeric ranges more comparable and is useful for several candidate algorithms. A Random Forest does not generally require standardized features, but the scaler is kept in the pipeline so training and inference use the same feature-processing steps.
+
+### 5.4 Current model: Random Forest
+
+The saved best_model.pkl loads as a scikit-learn RandomForestClassifier. The quick-training script configures its Random Forest candidate with:
+
+| Setting | Value | Purpose |
+| --- | ---: | --- |
+| Number of trees | 100 | Average decisions from multiple trees |
+| Maximum tree depth | 20 | Limit tree complexity |
+| Features considered per split | sqrt | Randomly consider a subset of features at each split |
+| Minimum samples to split | 5 | Avoid splitting very small nodes |
+| Random seed | 42 | Make the random process repeatable |
+| Parallel jobs | All available cores | Speed up fitting |
+
+A Random Forest combines many decision trees. Each tree learns a series of feature-based splits from a bootstrap sample of the training data. At each split, only a random subset of features is considered. For classification, tree outputs are aggregated to select a class; the model's predict_proba method averages probability estimates across trees.
+
+The ensemble is useful for this demonstration because it can model non-linear interactions between attributes, handles numeric features without assuming a straight-line relationship, and offers a practical baseline for a small structured dataset. It is still constrained by the dataset's size and label imbalance.
+
+### 5.5 Alternative model considered
+
+The quick-training script also evaluates a small StackingClassifier. In this version, the base layer contains a Random Forest and a Logistic Regression meta-estimator combines its out-of-fold outputs using two-fold internal cross-validation. The script compares its held-out accuracy against the standalone Random Forest and saves whichever scores higher.
+
+The currently included artifact is the standalone Random Forest, so the stacking alternative was not selected for this repository snapshot. The current performance CSV records the selected Random Forest result only.
+
+The advanced training script and historical notebook contain additional experiments. Their model outputs are from separate workflows and should not be mixed with the performance result for the committed artifact.
+
+### 5.6 Model evaluation
+
+The current recorded score is:
+
+| Metric | Current value |
+| --- | ---: |
+| Held-out accuracy | 76.47% |
+| Test records | 68 |
+| Saved model | Random Forest |
+
+Accuracy is the fraction of held-out examples for which the predicted tool class matches the recorded target. With 68 test rows, a score near 76.47% corresponds to roughly 52 correct predictions out of 68.
+
+The result is a single holdout score, not an independent benchmark or a guarantee of user satisfaction. The current performance file does not provide precision, recall, F1-score, per-class support, a confidence interval, or probability-calibration results.
+
+The encoder contains 65 tool labels, while the fitted Random Forest exposes 63 classes. This is consistent with rare labels being absent from the unstratified training split. The application maps probabilities by the classifier's actual class IDs; a tool label missing from model.classes_ receives zero model confidence. Its non-ML ratings can still contribute to the ranking score.
+
+## 6. From model output to displayed recommendation
+
+The classifier probability is only one part of the displayed ranking. The application combines the probability associated with a candidate tool and its recorded ratings, then applies a budget multiplier. It deduplicates candidates by tool name, keeping the highest-scoring candidate row, and produces the two result lists.
+
+This hybrid design is intended to balance the learned signal with criteria that are directly understandable to users. However, the score weights are hand-selected and have not been validated against clicks, purchases, satisfaction, or expert judgments. The probability should not be read as a calibrated probability that a user will like or choose the tool.
+
+## 7. Web interface and API
+
+### 7.1 API endpoints
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| / | GET | Serves the recommendation page |
+| /analytics | GET | Serves the analytics dashboard |
+| /get_categories | GET | Returns task categories, expertise levels, and platforms |
+| /predict | POST | Returns ranked free-plan and paid recommendation lists |
+| /get_analytics_data | GET | Returns dataset summaries and recorded model accuracy |
+
+The /predict endpoint accepts JSON fields named user_requirement, expertise_level, task_category, monthly_budget, and platform. The response contains recommendation lists, counts, number of records processed, a deduplication flag, and the recorded accuracy value.
+
+### 7.2 Analytics
+
+The dashboard summarizes the included data with category counts, popular tool labels, free-plan availability, average efficiency/quality/ease/price, platform distribution, and model accuracy. The current performance CSV records accuracy only, so the dashboard does not claim unrecorded precision, recall, or F1 metrics.
 
 ## 8. Local setup and operation
 
-Install a Python environment compatible with requirements.txt, then from the project root run:
+Use a Python environment compatible with the pinned packages in requirements.txt. From the project directory:
 
     python -m venv .venv
     .venv\Scripts\activate
@@ -117,48 +283,44 @@ Install a Python environment compatible with requirements.txt, then from the pro
     pip install -r requirements.txt
     python start_app.py
 
-Visit http://localhost:5000 for the main app and http://localhost:5000/analytics for the dashboard.
+Open http://localhost:5000 for recommendations and http://localhost:5000/analytics for the dashboard.
 
 To rebuild the current data and model:
 
     python data_cleaning_pipeline.py
     python quick_model_training.py
 
-The advanced script offers additional tuning but is slower. Training writes artifacts into the project root and replaces the committed versions.
+The advanced script offers a slower comparison and tuning route. Training scripts write artifacts into the project directory and can replace the model, encoders, scaler, and metrics used by the app.
 
-## 9. API surface
+## 9. Limitations and interpretation
 
-| Endpoint | Method | Function |
-| --- | --- | --- |
-| / | GET | Serves the recommendation page |
-| /analytics | GET | Serves the dashboard |
-| /get_categories | GET | Returns available categories, expertise levels, and platforms |
-| /predict | POST | Returns ranked free-plan and paid tool lists |
-| /get_analytics_data | GET | Returns summary metrics and model performance rows |
+- The free-text requirement does not currently affect candidate selection or model features.
+- The requested platform does not filter results; the candidate record's platform is used as an input.
+- The cleaned dataset contains only 339 rows for 65 tool labels, and the fitted model includes 63 of those labels.
+- The random split is unstratified. The 68-row holdout is small, so accuracy may vary with another split.
+- Accuracy does not show which tools are being confused, whether rare classes work well, or whether probability estimates are calibrated.
+- Label-encoded nominal categories can introduce artificial numeric ordering.
+- The hybrid score is heuristic and is not validated against observed user outcomes.
+- Some price and tool data may be outdated; several fields remain missing.
+- Missing monthly prices are converted to zero by the current cleaner, which can confuse unknown prices with free tools.
+- Flask's built-in development server is for local demonstration. Use production hosting practices before exposing the service publicly.
+- The repository does not include a LICENSE file. Check rights and data-source terms before redistributing the project or dataset.
 
-The prediction request accepts user_requirement, expertise_level, task_category, monthly_budget, and platform as JSON fields. The response includes the two recommendation lists, counts, records processed, whether deduplication was applied, and the recorded accuracy value.
+## 10. Recommended next steps
 
-## 10. Limitations and risks to interpretation
+1. Collect more labeled examples, especially for infrequent tool labels.
+2. Compare label encoding with one-hot encoding or categorical-aware pipelines.
+3. Use stratified or repeated evaluation where class counts permit; report per-class precision, recall, F1, and a confusion matrix.
+4. Keep a fixed final test set and avoid choosing model settings based on that same test set.
+5. Check probability calibration before describing classifier probabilities as confidence.
+6. Use the free-text requirement through a documented text-matching or embedding method, or remove it from the active recommendation form until implemented.
+7. Apply the user's platform preference in candidate filtering and test budget handling with edge cases.
+8. Validate the ranking weights with user feedback and measurable outcomes.
+9. Add input validation, automated tests, a production WSGI configuration, and a defined project license.
+10. Record data sources and refresh dates and avoid treating missing prices as confirmed free plans.
 
-- The free-text requirement is currently logged but not used in candidate filtering or model features.
-- The request's platform does not filter the candidate records; the candidate row's platform is used as a model feature.
-- The training dataset is small relative to 65 tool labels, and the random split is not stratified. Two tool labels are absent from the fitted model classes.
-- A single 68-row test split can give a noisy accuracy estimate. Accuracy alone does not describe performance for each class or whether probabilities are calibrated.
-- The ranking score is a heuristic whose weights have not been validated against user satisfaction or a business objective.
-- Dataset prices and product characteristics may be stale, and several fields remain missing.
-- The local development server is not a production deployment. Use a production WSGI server, configure the host and environment appropriately, and review exposure before deployment.
-- The repository has no LICENSE file. Source and dataset redistribution rights should be checked before reuse.
+## Conclusion
 
-## 11. Suggested next work
+ToolMatcher AI addresses a real discovery problem: choosing among many AI tools while balancing task fit, expertise, and cost. It provides a structured shortlist and demonstrates a complete ML-enabled web workflow from data preparation through model serving.
 
-1. Add stratified evaluation or repeated cross-validation where class counts allow, and publish class-wise metrics.
-2. Gather more labeled examples for rare tools and include a stable train/test evaluation protocol.
-3. Either use the free-text request in a documented matching method or remove it from the interface until implemented.
-4. Apply the requested platform and budget consistently in filtering and scoring.
-5. Validate the ranking formula with user feedback, then tune its weights from measurable outcomes.
-6. Add automated tests, input validation, and a production WSGI/deployment configuration.
-7. Record data source and refresh information for every price field, and define the project license.
-
-## 12. Summary
-
-ToolMatcher AI demonstrates an end-to-end path from raw data cleaning and model training to Flask-based recommendations and dashboard reporting. The committed snapshot is reproducible from the included artifacts and reports a 76.47% held-out accuracy for its Random Forest model. Its strongest next step is improving evaluation and aligning the free-text/platform inputs with the behavior users expect from the interface.
+The current implementation is best understood as a prototype and educational decision-support system. Its included Random Forest records 76.47% accuracy on a small 68-row holdout. The most valuable improvements are to gather more balanced training examples, evaluate the classifier more thoroughly, make the free-text and platform inputs affect recommendations, and validate the ranking formula with actual user feedback.
